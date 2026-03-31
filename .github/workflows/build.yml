@@ -19,7 +19,7 @@ jobs:
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v1
         with:
-          cmake-version: '3.29.2'   # stable version of CMake
+          cmake-version: '3.29.2'
 
       - name: Install Geode SDK
         run: |
