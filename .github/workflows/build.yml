@@ -19,7 +19,12 @@ jobs:
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v1
         with:
-          cmake-version: '3.29.2'   # pick a stable version
+          cmake-version: '3.29.2'   # stable version of CMake
+
+      - name: Install Geode SDK
+        run: |
+          git clone https://github.com/geode-sdk/sdk.git geode-sdk
+          echo "GEODE_SDK=${{ github.workspace }}/geode-sdk" >> $GITHUB_ENV
 
       - name: Configure project
         run: cmake -B build -S .
