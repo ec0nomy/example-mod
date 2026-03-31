@@ -1,100 +1,144 @@
-/**
- * Include the Geode headers.
- */
 #include <Geode/Geode.hpp>
+#include <Geode/modify/PlayLayer.hpp>
+#include <Geode/cocos/include/cocos2d.h>
+#include <random>
+#include <ctime>
 
-/**
- * Brings cocos2d and all Geode namespaces to the current scope.
- */
 using namespace geode::prelude;
+USING_NS_CC;
 
-/**
- * `$modify` lets you extend and modify GD's classes.
- * To hook a function in Geode, simply $modify the class
- * and write a new function definition with the signature of
- * the function you want to hook.
- *
- * Here we use the overloaded `$modify` macro to set our own class name,
- * so that we can use it for button callbacks.
- *
- * Notice the header being included, you *must* include the header for
- * the class you are modifying, or you will get a compile error.
- *
- * Another way you could do this is like this:
- *
- * struct MyMenuLayer : Modify<MyMenuLayer, MenuLayer> {};
- */
-#include <Geode/modify/MenuLayer.hpp>
-class $modify(MyMenuLayer, MenuLayer) {
-	/**
-	 * Typically classes in GD are initialized using the `init` function, (though not always!),
-	 * so here we use it to add our own button to the bottom menu.
-	 *
-	 * Note that for all hooks, your signature has to *match exactly*,
-	 * `void init()` would not place a hook!
-	*/
-	bool init() {
-		/**
-		 * We call the original init function so that the
-		 * original class is properly initialized.
-		 */
-		if (!MenuLayer::init()) {
-			return false;
-		}
+static const int CIRCLE_LAYER_TAG = 98421;
 
-		/**
-		 * You can use methods from the `geode::log` namespace to log messages to the console,
-		 * being useful for debugging and such. See this page for more info about logging:
-		 * https://docs.geode-sdk.org/tutorials/logging
-		*/
-		log::debug("Hello from my MenuLayer::init hook! This layer has {} children.", this->getChildrenCount());
+// ─────────────────────────────────────────────────────────────────
+//  Create one circle sprite — randomly picks image 1 or image 2
+//  each time it's called, completely independently per circle.
+// ─────────────────────────────────────────────────────────────────
+static CCSprite* makeCircleSprite(float scale, GLubyte opacity, std::mt19937& rng)
+{
+    // 50/50 chance per circle — results in fully random split each level
+    bool useSketchy = std::uniform_int_distribution<int>(0, 1)(rng) == 0;
 
-		/**
-		 * See this page for more info about buttons
-		 * https://docs.geode-sdk.org/tutorials/buttons
-		*/
-		auto myButton = CCMenuItemSpriteExtra::create(
-			CCSprite::createWithSpriteFrameName("GJ_likeBtn_001.png"),
-			this,
-			/**
-			 * Here we use the name we set earlier for our modify class.
-			*/
-			menu_selector(MyMenuLayer::onMyButton)
-		);
+    const char* filename = useSketchy
+        ? "circle_sketchy.jpg"   // rough ink-brush oval
+        : "circle_clean.png";    // flat clean oval
 
-		/**
-		 * Here we access the `bottom-menu` node by its ID, and add our button to it.
-		 * Node IDs are a Geode feature, see this page for more info about it:
-		 * https://docs.geode-sdk.org/tutorials/nodetree
-		*/
-		auto menu = this->getChildByID("bottom-menu");
-		menu->addChild(myButton);
+    CCSprite* spr = CCSprite::create(filename);
 
-		/**
-		 * The `_spr` string literal operator just prefixes the string with
-		 * your mod id followed by a slash. This is good practice for setting your own node ids.
-		*/
-		myButton->setID("my-button"_spr);
+    if (!spr) {
+        // Fallback: if texture fails to load, draw a plain black circle
+        // so the mod doesn't silently break
+        log::warn("DarkCirclesBuff: failed to load {}, using fallback", filename);
+        CCDrawNode* dn = CCDrawNode::create();
+        const int SEGS = 64;
+        CCPoint verts[SEGS];
+        for (int s = 0; s < SEGS; s++) {
+            float a = (float)s / (float)SEGS * 2.f * (float)M_PI;
+            verts[s] = CCPoint(cosf(a) * 100.f, sinf(a) * 50.f);
+        }
+        dn->drawPolygon(verts, SEGS,
+            ccc4f(0,0,0, (float)opacity/255.f), 0.f, ccc4f(0,0,0,0));
+        // Wrap in a node so the API stays the same
+        CCNode* wrapper = CCNode::create();
+        wrapper->addChild(dn);
+        wrapper->setScale(scale);
+        // Can't return CCNode as CCSprite, so just return nullptr —
+        // caller handles nullptr gracefully
+        return nullptr;
+    }
 
-		/**
-		 * We update the layout of the menu to ensure that our button is properly placed.
-		 * This is yet another Geode feature, see this page for more info about it:
-		 * https://docs.geode-sdk.org/tutorials/layouts
-		*/
-		menu->updateLayout();
+    spr->setScale(scale);
+    spr->setOpacity(opacity);
+    return spr;
+}
 
-		/**
-		 * We return `true` to indicate that the class was properly initialized.
-		 */
-		return true;
-	}
+// ─────────────────────────────────────────────────────────────────
+//  Same fallback node used when sprite load fails
+// ─────────────────────────────────────────────────────────────────
+static CCNode* makeFallbackCircle(float scale, GLubyte opacity)
+{
+    CCDrawNode* dn = CCDrawNode::create();
+    const int SEGS = 64;
+    CCPoint verts[SEGS];
+    for (int s = 0; s < SEGS; s++) {
+        float a = (float)s / (float)SEGS * 2.f * (float)M_PI;
+        verts[s] = CCPoint(cosf(a) * 100.f, sinf(a) * 50.f);
+    }
+    dn->drawPolygon(verts, SEGS,
+        ccc4f(0,0,0, (float)opacity/255.f), 0.f, ccc4f(0,0,0,0));
+    CCNode* wrapper = CCNode::create();
+    wrapper->addChild(dn);
+    wrapper->setScale(scale);
+    return wrapper;
+}
 
-	/**
-	 * This is the callback function for the button we created earlier.
-	 * The signature for button callbacks must always be the same,
-	 * return type `void` and taking a `CCObject*`.
-	*/
-	void onMyButton(CCObject*) {
-		FLAlertLayer::create("Geode", "Hello from my custom mod!", "OK")->show();
-	}
+// ─────────────────────────────────────────────────────────────────
+//  PlayLayer hook
+// ─────────────────────────────────────────────────────────────────
+class $modify(PlayLayer) {
+
+    bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
+        if (!PlayLayer::init(level, useReplay, dontCreateObjects))
+            return false;
+
+        auto* mod = Mod::get();
+
+        if (!mod->getSettingValue<bool>("enabled"))
+            return true;
+
+        int   minC    = (int)mod->getSettingValue<int64_t>("min-circles");
+        int   maxC    = (int)mod->getSettingValue<int64_t>("max-circles");
+        float scl     = (float)mod->getSettingValue<double>("circle-scale");
+        int   opc     = (int)mod->getSettingValue<int64_t>("circle-opacity");
+        int   vspread = (int)mod->getSettingValue<int64_t>("spread-vertical");
+
+        if (minC < 1)  minC = 1;
+        if (maxC < 1)  maxC = 1;
+        if (minC > maxC) std::swap(minC, maxC);
+
+        // Fresh RNG seed every run so the split is always different
+        unsigned seed = (unsigned)std::time(nullptr)
+                      ^ (level ? (unsigned)level->m_levelID.value() : 0u);
+        std::mt19937 rng(seed);
+
+        int count = std::uniform_int_distribution<int>(minC, maxC)(rng);
+
+        CCLayer* objLayer = m_objectLayer;
+        if (!objLayer) objLayer = this;
+
+        float levelLengthPx = 30000.f;
+        if (level) {
+            float ll = (float)level->m_levelLength;
+            if (ll > 100.f) levelLengthPx = ll * 30.f;
+        }
+
+        CCLayer* circleLayer = CCLayer::create();
+        circleLayer->setTag(CIRCLE_LAYER_TAG);
+
+        std::uniform_real_distribution<float> xDist(300.f, levelLengthPx - 300.f);
+        std::uniform_real_distribution<float> yDist(
+            -(float)vspread * 0.5f,
+             (float)vspread * 0.5f
+        );
+        const float Y_CENTER = 160.f;
+
+        for (int i = 0; i < count; i++) {
+            float px = xDist(rng);
+            float py = Y_CENTER + yDist(rng);
+
+            CCSprite* spr = makeCircleSprite(scl, (GLubyte)opc, rng);
+
+            if (spr) {
+                spr->setPosition(CCPoint(px, py));
+                circleLayer->addChild(spr, -10);
+            } else {
+                // Sprite failed to load — use drawn fallback
+                CCNode* fb = makeFallbackCircle(scl, (GLubyte)opc);
+                fb->setPosition(CCPoint(px, py));
+                circleLayer->addChild(fb, -10);
+            }
+        }
+
+        objLayer->addChild(circleLayer, -10);
+        return true;
+    }
 };
