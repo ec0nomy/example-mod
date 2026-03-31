@@ -1,17 +1,62 @@
 {
-	"geode": "$GEODE_VERSION",
+	"geode": "4.1.0",
 	"gd": {
-		"win": "2.2081",
-		"android": "2.2081",
-		"mac": "2.2081",
-		"ios": "2.2081"
+		"win": "2.2801",
+		"android": "2.2801",
+		"mac": "2.2801"
 	},
-	"id": "$MOD_ID",
-	"name": "$MOD_NAME",
-	"version": "$MOD_VERSION",
-	"developer": "$MOD_DEVELOPER",
-	"description": "$MOD_DESCRIPTION",
-	"dependencies": {
-		"geode.node-ids": ">=v1.20.0"
+	"id": "davidd892.darkcirclesbuff",
+	"name": "Dark Circles Buff",
+	"version": "v1.0.0",
+	"developer": "davidd892",
+	"description": "Spawns dark circles randomly throughout every level. Configure min/max count in settings.",
+	"tags": ["gameplay", "enhancement"],
+	"settings": {
+		"enabled": {
+			"name": "Enable Dark Circles",
+			"description": "Toggle whether dark circles appear in levels.",
+			"type": "bool",
+			"default": true
+		},
+		"min-circles": {
+			"name": "Minimum Circles",
+			"description": "Minimum number of dark circles that can spawn in a level.",
+			"type": "int",
+			"default": 10,
+			"min": 1,
+			"max": 500
+		},
+		"max-circles": {
+			"name": "Maximum Circles",
+			"description": "Maximum number of dark circles that can spawn in a level. A random number between min and max is chosen each time.",
+			"type": "int",
+			"default": 20,
+			"min": 1,
+			"max": 500
+		},
+		"circle-scale": {
+			"name": "Circle Scale",
+			"description": "How large each dark circle is (1.0 = default, 2.0 = double size).",
+			"type": "float",
+			"default": 2.5,
+			"min": 0.5,
+			"max": 10.0
+		},
+		"circle-opacity": {
+			"name": "Circle Opacity",
+			"description": "Opacity of dark circles (0 = invisible, 255 = fully opaque).",
+			"type": "int",
+			"default": 220,
+			"min": 10,
+			"max": 255
+		},
+		"spread-vertical": {
+			"name": "Vertical Spread",
+			"description": "How spread out vertically the circles are (in GD units).",
+			"type": "int",
+			"default": 200,
+			"min": 50,
+			"max": 1000
+		}
 	}
 }
