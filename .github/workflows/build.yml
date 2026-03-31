@@ -9,6 +9,9 @@ on:
 jobs:
   build:
     runs-on: windows-latest
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Opt in to Node.js 24 now
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -16,7 +19,7 @@ jobs:
       - name: Setup CMake
         uses: jwlawson/actions-setup-cmake@v1
         with:
-          cmake-version: '3.29.2'   # pick a recent version
+          cmake-version: '3.29.2'   # pick a stable version
 
       - name: Configure project
         run: cmake -B build -S .
