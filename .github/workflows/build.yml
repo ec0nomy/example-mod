@@ -1,4 +1,4 @@
-name: Build Geode Mod
+name: Build Dark Circles Buff
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Opt in to Node.js 24 now
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Opt in to Node.js 24
 
     steps:
       - name: Checkout repository
@@ -22,9 +22,10 @@ jobs:
           cmake-version: '3.29.2'
 
       - name: Install Geode SDK
+        shell: bash
         run: |
           git clone https://github.com/geode-sdk/sdk.git geode-sdk
-          echo "GEODE_SDK=${{ github.workspace }}/geode-sdk" >> $GITHUB_ENV
+          echo "GEODE_SDK=$GITHUB_WORKSPACE/geode-sdk" >> $GITHUB_ENV
 
       - name: Configure project
         run: cmake -B build -S .
@@ -35,5 +36,5 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: geode-mod
+          name: DarkCirclesBuff
           path: build/**/*.geode
