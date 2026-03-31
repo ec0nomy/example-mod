@@ -10,7 +10,7 @@ jobs:
   build:
     runs-on: windows-latest
     env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # Opt in to Node.js 24
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
     steps:
       - name: Checkout repository
@@ -21,13 +21,13 @@ jobs:
         with:
           cmake-version: '3.29.2'
 
-      - name: Install Geode SDK + Binaries
+      - name: Install Geode SDK + Loader
         shell: bash
         run: |
           git clone https://github.com/geode-sdk/sdk.git geode-sdk
           echo "GEODE_SDK=$GITHUB_WORKSPACE/geode-sdk" >> $GITHUB_ENV
           mkdir -p geode-sdk/bin
-          curl -L https://github.com/geode-sdk/loader/releases/latest/download/Geode-Windows.zip -o loader.zip
+          curl -L https://github.com/geode-sdk/loader/releases/download/v2.0.0/Geode-Windows.zip -o loader.zip
           unzip loader.zip -d geode-sdk/bin
 
       - name: Configure project
