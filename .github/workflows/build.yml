@@ -1,3 +1,5 @@
+
+```yaml
 name: Build Dark Circles Buff
 
 on:
@@ -8,36 +10,28 @@ on:
 
 jobs:
   build:
-    runs-on: windows-latest
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+    strategy:
+      matrix:
+        config:
+          - name: Windows
+            os: windows-latest
+          - name: Android32
+            os: ubuntu-latest
+            target: Android32
+          - name: Android64
+            os: ubuntu-latest
+            target: Android64
+
+    name: ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup CMake
-        uses: jwlawson/actions-setup-cmake@v1
+      - name: Build the mod
+        uses: geode-sdk/build-geode-mod@main
         with:
-          cmake-version: '3.29.2'
-
-      - name: Install Geode SDK + Loader
-        shell: bash
-        run: |
-          git clone https://github.com/geode-sdk/sdk.git geode-sdk
-          echo "GEODE_SDK=$GITHUB_WORKSPACE/geode-sdk" >> $GITHUB_ENV
-          mkdir -p geode-sdk/bin
-          curl -L https://github.com/geode-sdk/loader/releases/download/v2.0.0/Geode-Windows.zip -o loader.zip
-          unzip loader.zip -d geode-sdk/bin
-
-      - name: Configure project
-        run: cmake -B build -S .
-
-      - name: Build project
-        run: cmake --build build --config Release
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: DarkCirclesBuff
-          path: build/**/*.geode
+          sdk: nightly
+          target: ${{ matrix.config.target }}
+          build-config: Release
+```
