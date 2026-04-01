@@ -1,5 +1,4 @@
 
-```yaml
 name: Build Dark Circles Buff
 
 on:
@@ -34,4 +33,3 @@ jobs:
           sdk: nightly
           target: ${{ matrix.config.target }}
           build-config: Release
-```
