@@ -1,3 +1,4 @@
+
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/cocos/include/cocos2d.h>
@@ -9,40 +10,18 @@ USING_NS_CC;
 
 static const int CIRCLE_LAYER_TAG = 98421;
 
-// ─────────────────────────────────────────────────────────────────
-//  Create one circle sprite — randomly picks image 1 or image 2
-//  each time it's called, completely independently per circle.
-// ─────────────────────────────────────────────────────────────────
 static CCSprite* makeCircleSprite(float scale, GLubyte opacity, std::mt19937& rng)
 {
-    // 50/50 chance per circle — results in fully random split each level
     bool useSketchy = std::uniform_int_distribution<int>(0, 1)(rng) == 0;
 
     const char* filename = useSketchy
-        ? "circle_sketchy.jpg"   // rough ink-brush oval
-        : "circle_clean.png";    // flat clean oval
+        ? "circle_sketchy.jpg"
+        : "circle_clean.png";
 
     CCSprite* spr = CCSprite::create(filename);
 
     if (!spr) {
-        // Fallback: if texture fails to load, draw a plain black circle
-        // so the mod doesn't silently break
         log::warn("DarkCirclesBuff: failed to load {}, using fallback", filename);
-        CCDrawNode* dn = CCDrawNode::create();
-        const int SEGS = 64;
-        CCPoint verts[SEGS];
-        for (int s = 0; s < SEGS; s++) {
-            float a = (float)s / (float)SEGS * 2.f * (float)M_PI;
-            verts[s] = CCPoint(cosf(a) * 100.f, sinf(a) * 50.f);
-        }
-        dn->drawPolygon(verts, SEGS,
-            ccc4f(0,0,0, (float)opacity/255.f), 0.f, ccc4f(0,0,0,0));
-        // Wrap in a node so the API stays the same
-        CCNode* wrapper = CCNode::create();
-        wrapper->addChild(dn);
-        wrapper->setScale(scale);
-        // Can't return CCNode as CCSprite, so just return nullptr —
-        // caller handles nullptr gracefully
         return nullptr;
     }
 
@@ -51,9 +30,6 @@ static CCSprite* makeCircleSprite(float scale, GLubyte opacity, std::mt19937& rn
     return spr;
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  Same fallback node used when sprite load fails
-// ─────────────────────────────────────────────────────────────────
 static CCNode* makeFallbackCircle(float scale, GLubyte opacity)
 {
     CCDrawNode* dn = CCDrawNode::create();
@@ -71,9 +47,6 @@ static CCNode* makeFallbackCircle(float scale, GLubyte opacity)
     return wrapper;
 }
 
-// ─────────────────────────────────────────────────────────────────
-//  PlayLayer hook
-// ─────────────────────────────────────────────────────────────────
 class $modify(PlayLayer) {
 
     bool init(GJGameLevel* level, bool useReplay, bool dontCreateObjects) {
@@ -95,7 +68,6 @@ class $modify(PlayLayer) {
         if (maxC < 1)  maxC = 1;
         if (minC > maxC) std::swap(minC, maxC);
 
-        // Fresh RNG seed every run so the split is always different
         unsigned seed = (unsigned)std::time(nullptr)
                       ^ (level ? (unsigned)level->m_levelID.value() : 0u);
         std::mt19937 rng(seed);
@@ -131,7 +103,6 @@ class $modify(PlayLayer) {
                 spr->setPosition(CCPoint(px, py));
                 circleLayer->addChild(spr, -10);
             } else {
-                // Sprite failed to load — use drawn fallback
                 CCNode* fb = makeFallbackCircle(scl, (GLubyte)opc);
                 fb->setPosition(CCPoint(px, py));
                 circleLayer->addChild(fb, -10);
@@ -141,4 +112,4 @@ class $modify(PlayLayer) {
         objLayer->addChild(circleLayer, -10);
         return true;
     }
-};
+}
