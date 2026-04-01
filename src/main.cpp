@@ -3,46 +3,80 @@
 #include <Geode/cocos/include/cocos2d.h>
 #include <random>
 #include <ctime>
+#include <cmath>
 
 using namespace geode::prelude;
 USING_NS_CC;
 
 static const int CIRCLE_LAYER_TAG = 98421;
 
-static CCSprite* makeCircleSprite(float scale, GLubyte opacity, std::mt19937& rng)
-{
-    bool useSketchy = std::uniform_int_distribution<int>(0, 1)(rng) == 0;
-
-    std::string filename = (std::string)Mod::get()->getResourcesDir()
-        + (useSketchy ? "circle_sketchy.jpg" : "circle_clean.png");
-
-    CCSprite* spr = CCSprite::create(filename.c_str());
-
-    if (!spr) {
-        log::warn("DarkCirclesBuff: failed to load {}", filename);
-        return nullptr;
-    }
-
-    spr->setScale(scale);
-    spr->setOpacity(opacity);
-    return spr;
-}
-
-static CCNode* makeFallbackCircle(float scale, GLubyte opacity)
+static CCNode* makeCleanCircle(float scale, GLubyte opacity)
 {
     CCDrawNode* dn = CCDrawNode::create();
-    const int SEGS = 64;
+    const int SEGS = 128;
+    const float RX = 140.f;
+    const float RY = 60.f;
     CCPoint verts[SEGS];
     for (int s = 0; s < SEGS; s++) {
         float a = (float)s / (float)SEGS * 2.f * (float)M_PI;
-        verts[s] = CCPoint(cosf(a) * 100.f, sinf(a) * 50.f);
+        verts[s] = CCPoint(cosf(a) * RX, sinf(a) * RY);
     }
+    float alpha = (float)opacity / 255.f;
     dn->drawPolygon(verts, SEGS,
-        ccc4f(0,0,0, (float)opacity/255.f), 0.f, ccc4f(0,0,0,0));
+        ccc4f(0.f, 0.f, 0.f, alpha),
+        0.f,
+        ccc4f(0.f, 0.f, 0.f, 0.f));
     CCNode* wrapper = CCNode::create();
     wrapper->addChild(dn);
     wrapper->setScale(scale);
     return wrapper;
+}
+
+static CCNode* makeSketchyCircle(float scale, GLubyte opacity)
+{
+    CCNode* wrapper = CCNode::create();
+    std::mt19937 rng(std::random_device{}());
+    std::uniform_real_distribution<float> angleDist(-40.f, 40.f);
+    std::uniform_real_distribution<float> rxVar(0.80f, 1.20f);
+    std::uniform_real_distribution<float> ryVar(0.70f, 1.30f);
+    std::uniform_real_distribution<float> alphaVar(0.55f, 0.90f);
+    std::uniform_real_distribution<float> offsetVar(-8.f, 8.f);
+    const int STROKES = 32;
+    const float BASE_RX = 130.f;
+    const float BASE_RY = 95.f;
+    const int SEGS = 64;
+    float baseAlpha = (float)opacity / 255.f;
+    for (int i = 0; i < STROKES; i++) {
+        CCDrawNode* stroke = CCDrawNode::create();
+        float rx = BASE_RX * rxVar(rng);
+        float ry = BASE_RY * ryVar(rng);
+        CCPoint verts[SEGS];
+        for (int s = 0; s < SEGS; s++) {
+            float a = (float)s / (float)SEGS * 2.f * (float)M_PI;
+            verts[s] = CCPoint(
+                cosf(a) * rx + offsetVar(rng),
+                sinf(a) * ry + offsetVar(rng)
+            );
+        }
+        float alpha = baseAlpha * alphaVar(rng);
+        stroke->drawPolygon(verts, SEGS,
+            ccc4f(0.f, 0.f, 0.f, alpha),
+            0.f,
+            ccc4f(0.f, 0.f, 0.f, 0.f));
+        stroke->setRotation(angleDist(rng));
+        wrapper->addChild(stroke);
+    }
+    wrapper->setScale(scale);
+    return wrapper;
+}
+
+static CCNode* makeCircle(float scale, GLubyte opacity, std::mt19937& rng)
+{
+    bool useSketchy = std::uniform_int_distribution<int>(0, 1)(rng) == 0;
+    if (useSketchy)
+        return makeSketchyCircle(scale, opacity);
+    else
+        return makeCleanCircle(scale, opacity);
 }
 
 class $modify(PlayLayer) {
@@ -85,10 +119,9 @@ class $modify(PlayLayer) {
 
         float sectionWidth = (levelLengthPx - 1000.f) / (float)count;
 
-        // 70% chance near ground/spike area, 30% chance anywhere higher
         std::uniform_int_distribution<int> chancePicker(0, 9);
-        std::uniform_real_distribution<float> groundY(60.f, 130.f);   // near ground/spikes
-        std::uniform_real_distribution<float> anyY(130.f, 350.f);      // anywhere higher
+        std::uniform_real_distribution<float> groundY(60.f, 130.f);
+        std::uniform_real_distribution<float> anyY(130.f, 350.f);
 
         for (int i = 0; i < count; i++) {
             float sectionStart = 500.f + i * sectionWidth;
@@ -98,24 +131,14 @@ class $modify(PlayLayer) {
             float px = xDist(rng);
             float py;
 
-            int chance = chancePicker(rng);
-            if (chance < 7) {
-                // 70% — near ground/spike area
+            if (chancePicker(rng) < 7)
                 py = groundY(rng);
-            } else {
-                // 30% — somewhere higher up
+            else
                 py = anyY(rng);
-            }
 
-            CCSprite* spr = makeCircleSprite(scl, (GLubyte)opc, rng);
-            if (spr) {
-                spr->setPosition(CCPoint(px, py));
-                circleLayer->addChild(spr, -10);
-            } else {
-                CCNode* fb = makeFallbackCircle(scl, (GLubyte)opc);
-                fb->setPosition(CCPoint(px, py));
-                circleLayer->addChild(fb, -10);
-            }
+            CCNode* circle = makeCircle(scl, (GLubyte)opc, rng);
+            circle->setPosition(CCPoint(px, py));
+            circleLayer->addChild(circle, -10);
         }
 
         objLayer->addChild(circleLayer, -10);
