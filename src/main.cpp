@@ -1,4 +1,3 @@
-
 #include <Geode/Geode.hpp>
 #include <Geode/modify/PlayLayer.hpp>
 #include <Geode/cocos/include/cocos2d.h>
@@ -112,4 +111,4 @@ class $modify(PlayLayer) {
         objLayer->addChild(circleLayer, -10);
         return true;
     }
-}
+};
