@@ -13,14 +13,13 @@ static CCSprite* makeCircleSprite(float scale, GLubyte opacity, std::mt19937& rn
 {
     bool useSketchy = std::uniform_int_distribution<int>(0, 1)(rng) == 0;
 
-    const char* filename = useSketchy
-        ? "circle_sketchy.jpg"
-        : "circle_clean.png";
+    std::string filename = (std::string)Mod::get()->getResourcesDir()
+        + (useSketchy ? "circle_sketchy.jpg" : "circle_clean.png");
 
-    CCSprite* spr = CCSprite::create(filename);
+    CCSprite* spr = CCSprite::create(filename.c_str());
 
     if (!spr) {
-        log::warn("DarkCirclesBuff: failed to load {}, using fallback", filename);
+        log::warn("DarkCirclesBuff: failed to load {}", filename);
         return nullptr;
     }
 
@@ -57,14 +56,13 @@ class $modify(PlayLayer) {
         if (!mod->getSettingValue<bool>("enabled"))
             return true;
 
-        int   minC    = (int)mod->getSettingValue<int64_t>("min-circles");
-        int   maxC    = (int)mod->getSettingValue<int64_t>("max-circles");
-        float scl     = (float)mod->getSettingValue<double>("circle-scale");
-        int   opc     = (int)mod->getSettingValue<int64_t>("circle-opacity");
-        int   vspread = (int)mod->getSettingValue<int64_t>("spread-vertical");
+        int   minC = (int)mod->getSettingValue<int64_t>("min-circles");
+        int   maxC = (int)mod->getSettingValue<int64_t>("max-circles");
+        float scl  = (float)mod->getSettingValue<double>("circle-scale");
+        int   opc  = (int)mod->getSettingValue<int64_t>("circle-opacity");
 
-        if (minC < 1)  minC = 1;
-        if (maxC < 1)  maxC = 1;
+        if (minC < 1) minC = 1;
+        if (maxC < 1) maxC = 1;
         if (minC > maxC) std::swap(minC, maxC);
 
         unsigned seed = (unsigned)std::time(nullptr)
@@ -85,19 +83,31 @@ class $modify(PlayLayer) {
         CCLayer* circleLayer = CCLayer::create();
         circleLayer->setTag(CIRCLE_LAYER_TAG);
 
-        std::uniform_real_distribution<float> xDist(300.f, levelLengthPx - 300.f);
-        std::uniform_real_distribution<float> yDist(
-            -(float)vspread * 0.5f,
-             (float)vspread * 0.5f
-        );
-        const float Y_CENTER = 160.f;
+        float sectionWidth = (levelLengthPx - 1000.f) / (float)count;
+
+        // 70% chance near ground/spike area, 30% chance anywhere higher
+        std::uniform_int_distribution<int> chancePicker(0, 9);
+        std::uniform_real_distribution<float> groundY(60.f, 130.f);   // near ground/spikes
+        std::uniform_real_distribution<float> anyY(130.f, 350.f);      // anywhere higher
 
         for (int i = 0; i < count; i++) {
+            float sectionStart = 500.f + i * sectionWidth;
+            float sectionEnd   = sectionStart + sectionWidth;
+            std::uniform_real_distribution<float> xDist(sectionStart, sectionEnd);
+
             float px = xDist(rng);
-            float py = Y_CENTER + yDist(rng);
+            float py;
+
+            int chance = chancePicker(rng);
+            if (chance < 7) {
+                // 70% — near ground/spike area
+                py = groundY(rng);
+            } else {
+                // 30% — somewhere higher up
+                py = anyY(rng);
+            }
 
             CCSprite* spr = makeCircleSprite(scl, (GLubyte)opc, rng);
-
             if (spr) {
                 spr->setPosition(CCPoint(px, py));
                 circleLayer->addChild(spr, -10);
